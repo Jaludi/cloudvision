@@ -24,6 +24,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
@@ -33,6 +34,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -51,6 +53,9 @@ import com.google.api.services.vision.v1.model.BatchAnnotateImagesResponse;
 import com.google.api.services.vision.v1.model.EntityAnnotation;
 import com.google.api.services.vision.v1.model.Feature;
 import com.google.api.services.vision.v1.model.Image;
+import com.google.sample.cloudvision.searchpojos.BaseImage;
+import com.google.sample.cloudvision.searchpojos.Item;
+import com.google.sample.cloudvision.searchpojos.RetrofitService;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -58,11 +63,22 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static final String CLOUD_VISION_API_KEY = "AIzaSyBRMLNpHLUJY4U940tvouxvf2moqcks0jY";
     public static final String FILE_NAME = "temp.jpg";
     private static final String ANDROID_CERT_HEADER = "X-Android-Cert";
     private static final String ANDROID_PACKAGE_HEADER = "X-Android-Package";
+    private static final String K = "AIzaSyAV0biFXUPJzPKB9aIzoAE0PZtC1RXySFI";
+    private static final String ID = "012156516503846940546:d2q-7llk4t8";
+    private static final String RETROFIT_URL = "https://www.googleapis.com/";
+    private static final String SEARCHTYPE = "image";
+//    private static final String RETROFIT_URL = "https://www.googleapis.com/customsearch/v1?" + K + ID + "&searchType=image&q=";
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int GALLERY_PERMISSIONS_REQUEST = 0;
@@ -72,6 +88,9 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView mImageDetails;
     private ImageView mMainImage;
+    private String searchString;
+    private ArrayList<String> urlList;
+    private Button listBTN;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +98,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
+        urlList = new ArrayList<String>();
+        searchString = "";
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -105,6 +125,8 @@ public class MainActivity extends AppCompatActivity {
 
         mImageDetails = (TextView) findViewById(R.id.image_details);
         mMainImage = (ImageView) findViewById(R.id.main_image);
+        listBTN = (Button) findViewById(R.id.testBTN);
+        listBTN.setOnClickListener(this);
     }
 
     public void startGalleryChooser() {
@@ -146,6 +168,37 @@ public class MainActivity extends AppCompatActivity {
             Uri photoUri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".provider", getCameraFile());
             uploadImage(photoUri);
         }
+    }
+    private void doRetrofitNetworkCall() {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(RETROFIT_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        RetrofitService service = retrofit.create(RetrofitService.class);
+        Call<BaseImage> call = service.getStuff(K,ID,SEARCHTYPE, searchString);
+        call.enqueue(new Callback<BaseImage>() {
+            @Override
+            public void onResponse(Call<BaseImage> call, Response<BaseImage> response) {
+                if(response.isSuccessful()){
+                    BaseImage myBaseImage =  response.body();
+                    for(Item item:myBaseImage.getItems()){
+                        Log.d(TAG, "onResponse: Link is " + item.getLink());
+
+                        urlList.add(item.getLink());
+
+                    }
+
+                    Log.d(TAG, "onResponse: arrayCount = " + urlList.size());
+                    Log.d(TAG, "onResponse: list item 3 " + urlList.get(3) );
+                    listBTN.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<BaseImage> call, Throwable t) {
+                t.printStackTrace();
+            }
+        });
     }
 
     @Override
@@ -265,14 +318,20 @@ public class MainActivity extends AppCompatActivity {
                     Log.d(TAG, "failed to make API request because of other IOException " +
                             e.getMessage());
                 }
+
                 return "Cloud Vision API request failed. Check logs for details.";
             }
 
             protected void onPostExecute(String result) {
                 mImageDetails.setText(result);
+                Log.d(TAG, "onPostExecute: " + searchString);
+                doRetrofitNetworkCall();
+
             }
         }.execute();
     }
+
+
 
     public Bitmap scaleBitmapDown(Bitmap bitmap, int maxDimension) {
 
@@ -299,13 +358,40 @@ public class MainActivity extends AppCompatActivity {
 
         List<EntityAnnotation> labels = response.getResponses().get(0).getLabelAnnotations();
         if (labels != null) {
+            int counter = 0;
             for (EntityAnnotation label : labels) {
                 message += label.getDescription();
                 message += "\n";
+                if(counter< 3) {
+                    if(counter > 0)
+                    searchString += "+" + label.getDescription();
+                    else
+                    {
+                        searchString += label.getDescription();
+                    }
+                }
+                counter++;
             }
         } else {
             message += "nothing";
         }
 
         return message;
-    }}
+    }
+    private void callActivitySimilar(){
+        Intent intent = new Intent(MainActivity.this ,SimilarActivity.class);
+        intent.putStringArrayListExtra("UrlList",urlList);
+        startActivity(intent);
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.testBTN:
+                callActivitySimilar();
+                break;
+            default:
+                return;
+        }
+    }
+}
