@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
-
+apply plugin: 'kotlin-android'
+configurations {
+    compile.exclude group: "org.apache.httpcomponents", module: "httpclient"
+}
 android {
     compileSdkVersion 25
     buildToolsVersion "25.0.2"
@@ -25,13 +28,6 @@ dependencies {
     compile 'com.google.api-client:google-api-client-android:1.20.0' exclude module: 'httpclient'
     compile 'com.google.http-client:google-http-client-gson:1.20.0' exclude module: 'httpclient'
 
-
-
-
-
-
-
-
     compile 'com.android.support:appcompat-v7:25.1.1'
     compile 'com.android.support:design:25.1.1'
     compile 'com.google.apis:google-api-services-vision:v1-rev2-1.21.0'
@@ -42,4 +38,8 @@ dependencies {
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     testCompile 'junit:junit:4.12'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.0.0-RC1'
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
+}
+repositories {
+    mavenCentral()
 }
