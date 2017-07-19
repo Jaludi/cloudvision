@@ -1,6 +1,8 @@
 package com.google.sample.cloudvision;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -15,6 +17,7 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +26,7 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DataSource;
 import com.bumptech.glide.load.engine.GlideException;
 import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.BitmapImageViewTarget;
 import com.bumptech.glide.request.target.Target;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
@@ -66,12 +70,16 @@ public class DetailActivity extends AppCompatActivity implements RecycleViewAdap
 
     private TextView mImageDetails;
     private ImageView mMainImage;
+    private Button buttonTest;
+    private ImageView tempImage;
 
     private String searchString;
+    private Bitmap tempB;
 
     private ArrayList<String> urlList;
 
     RecycleViewAdapter adapter;
+    RecyclerView recyclerView;
 
 
     @Override
@@ -83,10 +91,16 @@ public class DetailActivity extends AppCompatActivity implements RecycleViewAdap
         mMainImage = (ImageView) findViewById(R.id.main_image);
 
         urlList = new ArrayList<>();
-
+        recyclerView = (RecyclerView) findViewById(R.id.recyclerTWO);
+        int numberOfColumns = 2;
+        recyclerView.setLayoutManager(new GridLayoutManager(this, numberOfColumns));
+        adapter = new RecycleViewAdapter(urlList, this);
+        adapter.setClickListener(this);
+        recyclerView.setAdapter(adapter);
         searchString = "";
         Glide
-                .with(getBaseContext())
+
+                .with(this)
                 .load(getIntent().getStringExtra("Url"))
                 .listener(new RequestListener<Drawable>() {
                     @Override
@@ -97,45 +111,25 @@ public class DetailActivity extends AppCompatActivity implements RecycleViewAdap
 
                     @Override
                     public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
-
-                        createBitmap();
+                       // createBitmap();
+                        //createBitmap();
+                        //tempImage.setImageDrawable(resource);
+                        mImageDetails.setText("image loaded");
+                        Bitmap bitmap = ((BitmapDrawable) resource).getBitmap();
+                        try {
+                            callCloudVision(bitmap);
+                        }
+                        catch (IOException e){
+                            e.printStackTrace();
+                        }
                         return false;
                     }
                 })
-                .into(mMainImage);
+                .into(mMainImage );
+
 
     }
 
-
-    private void createBitmap(){
-        try {
-
-//            BitmapDrawable drawable = (BitmapDrawable) mMainImage.getDrawable();
-//            Bitmap bitmap = drawable.getBitmap();
-            Bitmap bitmap = mMainImage.getDrawingCache();
-            callCloudVision(bitmap);
-        } catch (IOException e) {
-            Log.d(TAG, "Image picking failed because " + e.getMessage());
-            Toast.makeText(this, R.string.image_picker_error, Toast.LENGTH_LONG).show();
-        }
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler);
-        int numberOfColumns = 2;
-        recyclerView.setLayoutManager(new GridLayoutManager(this, numberOfColumns));
-        adapter = new RecycleViewAdapter(urlList, this);
-        adapter.setClickListener(this);
-        recyclerView.setAdapter(adapter);
-    }
 
     public Bitmap scaleBitmapDown(Bitmap bitmap, int maxDimension) {
 
@@ -200,7 +194,7 @@ public class DetailActivity extends AppCompatActivity implements RecycleViewAdap
                         // Convert the bitmap to a JPEG
                         // Just in case it's a format that Android understands but Cloud Vision
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                       // bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
                         byte[] imageBytes = byteArrayOutputStream.toByteArray();
 
                         // Base64 encode the JPEG
@@ -268,7 +262,7 @@ public class DetailActivity extends AppCompatActivity implements RecycleViewAdap
 
                     Log.d(TAG, "onResponse: arrayCount = " + urlList.size());
                     Log.d(TAG, "onResponse: list item 3 " + urlList.get(3) );
-
+                   adapter.notifyDataSetChanged();
                 }
             }
 
@@ -299,6 +293,7 @@ public class DetailActivity extends AppCompatActivity implements RecycleViewAdap
                 }
                 counter++;
             }
+
         } else {
             message += "nothing";
         }
@@ -309,5 +304,9 @@ public class DetailActivity extends AppCompatActivity implements RecycleViewAdap
     @Override
     public void onItemClick(View view, int position) {
         Log.i("TAG", "You clicked number " + adapter.getItem(position) + ", which is at cell position " + position);
+        Intent intent = new Intent(DetailActivity.this, DetailActivity.class);
+        intent.putExtra("Url", urlList.get(position));
+        Log.d("TAG", "onItemClick: testttt" );
+        startActivity(intent);
     }
 }

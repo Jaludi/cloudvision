@@ -8,7 +8,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 
-import com.squareup.picasso.Picasso;
+import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
 
@@ -37,7 +37,7 @@ public class RecycleViewAdapter extends RecyclerView.Adapter<RecycleViewAdapter.
     public void onBindViewHolder(RecycleViewAdapter.ViewHolder holder, int position) {
         String url = urlList.get(position);
         //holder.myTextView.setText(url);
-        Picasso
+        Glide
                 .with(context)
                 .load(urlList.get(position))
                 .into(holder.myImageView);
